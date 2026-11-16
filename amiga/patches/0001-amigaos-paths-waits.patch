@@ -1,0 +1,129 @@
+--- a/pacman.c
++++ b/pacman.c
+@@ -12,7 +12,9 @@
+ #include <curses.h>
+ #include <string.h>
+ #include <stdlib.h>
++#ifndef __amigaos__
+ #include <sys/timeb.h>
++#endif
+ #include "pacman.h"
+ 
+ #define EXIT_MSG "Good bye!"
+@@ -159,6 +161,20 @@
+ 	status = newwin(3, 27, 29, 1);
+ }
+ 
++#ifdef __amigaos__
++/* AmigaOS: the same pause, but the keys are waited for until it ends
++   (curses' timeout) instead of read in a loop that keeps the CPU busy */
++void Delay() {
++	long end = acurses_ms() + SpeedOfGame, now;
++
++	GetInput();
++	while ((now = acurses_ms()) < end) {
++		timeout((int)(end - now));
++		GetInput();
++	}
++	nodelay(stdscr, TRUE);
++}
++#else
+ void Delay() {
+ 
+ 	struct timeb t_start, t_current;
+@@ -170,6 +186,7 @@
+ 		ftime(&t_current);
+ 	} while (abs(t_start.millitm - t_current.millitm) < SpeedOfGame);
+ }
++#endif
+ 
+ void DrawWindow() {
+ 	int a = 0; int b = 0;
+@@ -225,6 +242,12 @@
+ void ExitProgram(const char *message) {
+ 	endwin();
+ 	printf("%s\n", message);
++#ifdef __amigaos__
++	/* the window closes when the game ends: the message stays until a key */
++	printf("Score: %d\n(a key closes the window)\n", Points);
++	fflush(stdout);
++	acurses_key(0, 30000);
++#endif
+ 	exit(0);
+ }
+ 
+@@ -565,8 +588,14 @@
+ 	wrefresh(win);
+ 	
+ 	//And wait
++#ifdef __amigaos__
++	nodelay(stdscr, FALSE);	// for a key, not in a busy loop
++	chtmp = getch();
++	nodelay(stdscr, TRUE);
++#else
+ 	do {
+ 		chtmp = getch();
+ 	} while (chtmp == ERR);
++#endif
+ 
+ }
+--- a/pacman.h
++++ b/pacman.h
+@@ -2,7 +2,14 @@
+ #ifndef DATAROOTDIR
+ #	define DATAROOTDIR "/usr/local/share"
+ #endif
++#ifdef __amigaos__
++/* the levels in the game's own drawer; pauses as dos.library Delay, keys
++   waited for instead of polled (amiga/curses.c, amiga/console_amiga.c) */
++#define LEVELS_FILE "PROGDIR:Levels/level__.dat"
++#define usleep(us) acurses_sleep((int)((us) / 1000))
++#else
+ #define LEVELS_FILE DATAROOTDIR "/pacman/Levels/level__.dat"
++#endif
+ char LevelFile[] = LEVELS_FILE;		//Locations of default levels
+ int FreeLife = 1000;			//Starting points for free life
+ int Points = 0;				//Initial points
+--- a/pacmanedit.c
++++ b/pacmanedit.c
+@@ -12,7 +12,9 @@
+ #include <curses.h>
+ #include <string.h>
+ #include <stdlib.h>
++#ifndef __amigaos__
+ #include <sys/timeb.h>
++#endif
+ #include "pacman.h"
+ 
+ #define FILE_ERR "You must specify a file to use (load and save)"
+@@ -133,6 +135,12 @@
+ 	else
+ 		printf("%s\n\n", message);
+ 
++#ifdef __amigaos__
++	/* the window closes when the editor ends: the message stays until a key */
++	printf("(a key closes the window)\n");
++	fflush(stdout);
++	acurses_key(0, 30000);
++#endif
+ 	exit(0);
+ }
+ 
+@@ -146,10 +154,17 @@
+ 	ch = getch();
+ 
+ 	//Buffer input
++#ifdef __amigaos__
++	DrawWindow();
++	nodelay(stdscr, FALSE);	// wait for the key, not in a busy loop
++	ch = getch();
++	nodelay(stdscr, TRUE);
++#else
+ 	do {
+ 		DrawWindow();
+ 		ch = getch();
+ 	} while (ch == ERR);
++#endif
+ 
+ 	switch (ch) {
+ 		case KEY_UP:    case 'w': case 'W':

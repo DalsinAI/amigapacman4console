@@ -1,0 +1,6 @@
+# Upstream: Pacman For Console 1.2 (Mike Billars, GPL-2.0) at this
+# commit; package/build-amiga.sh fetches it, never kept here.
+UP_URL=https://github.com/YoctoForBeaglebone/pacman4console
+UP_COMMIT=ddc229c3478b43b572cef4fc09bb1580f00a1e74
+UP_VERSION=1.2
+PORT_VERSION=1.2-gfos1

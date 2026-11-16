@@ -1,0 +1,87 @@
+; $VER: Install-Pacman4Console 1.2-gfos1 (16.11.2026)
+; The Amiga Installer script for Pacman For Console, an AmiCradle game port.
+; Made by amicradle scripts/ports/port_installer.py: change the spec, not this file.
+; Run it from its icon, beside the Pacman4Console drawer where the archive was unpacked.
+
+(set @app-name "Pacman For Console")
+(set #version "1.2-gfos1")
+(set #drawer "Pacman4Console")
+(set #program "Pacman")
+(set #space 245)  ; KB
+
+(onerror
+    (message (cat "Pacman For Console was not installed completely." "\n\n" @error-msg
+                  "\n\nFiles already copied stay where they are. Run Install-Pacman4Console again to finish.")))
+
+; the Installer, the CPU and the FPU
+(if (< @installer-version 2818051)
+    (abort "Pacman For Console needs Installer 43.3 or newer. This one is older: install AmigaOS 3.2 or a newer Installer."))
+(set #cpu (database "cpu"))
+(if (not (or (= #cpu "68040") (= #cpu "68060") (= #cpu "68080")))
+    (abort (cat "Pacman For Console needs a 68040, 68060 or 68080. This Amiga has a " #cpu ".")))
+
+; the package: the drawer beside this script
+(set #source (pathonly (expandpath @icon)))
+(set #from (tackon #source #drawer))
+(if (<> (exists #from (noreq)) 2)
+    (abort "The Pacman4Console drawer is not beside Install-Pacman4Console. Unpack the whole archive, then run Install-Pacman4Console from there."))
+(if (<> (exists (tackon #from #program) (noreq)) 1)
+    (abort "The Pacman4Console drawer has no Pacman in it. Unpack the whole archive again."))
+
+(welcome "This installs Pacman For Console 1.2-gfos1 for AmigaOS 3.2 on a 68040, 68060 or 68080.")
+
+; where: the parent drawer
+(set #default
+    (if (= (exists "Work:Games" (noreq)) 2) "Work:Games"
+        (if (= (exists "Work:" (noreq)) 2) "Work:" "SYS:")))
+(set #parent
+    (askdir
+        (prompt "Where should the Pacman4Console drawer go? Choose the drawer to put it in.")
+        (help "The Installer makes or updates a drawer called Pacman4Console in the drawer you choose. An update keeps your saves and settings.")
+        (default #default)))
+(set #dest (tackon #parent #drawer))
+(set #update (= (exists #dest (noreq)) 2))
+; in KB where the Installer can say so: in bytes, 2 GB free and more does not fit
+(set #free (if (>= @installer-version 2883584) (getdiskspace #parent "K")
+    (/ (getdiskspace #parent) 1024)))
+(if (and (>= #free 0) (< #free #space))
+    (abort (cat "There is not enough room in " #parent ": Pacman For Console needs 1 MB free.")))
+
+; the drawer: everything in it, but what the player has made
+(set #kept "")
+(if (exists (tackon #dest "Levels") (noreq))
+    (set #kept (if (= #kept "") "Levels" (cat #kept "|" "Levels"))))
+(if (not #update)
+    (makedir #dest))
+(if (= #kept "")
+    (copyfiles
+        (prompt "Copying Pacman For Console")
+        (help @copyfiles-help)
+        (source #from)
+        (dest #dest)
+        (all)
+        (optional "force" "askuser"))
+    (copyfiles
+        (prompt (cat "Updating Pacman For Console. Kept as they are: " #kept))
+        (help @copyfiles-help)
+        (source #from)
+        (dest #dest)
+        (pattern (cat "~(" #kept ")"))
+        (optional "force" "askuser")))
+(if (<> (exists (tackon #parent "Pacman4Console.info") (noreq)) 1)
+    (copyfiles
+        (help @copyfiles-help)
+        (source #source)
+        (dest #parent)
+        (choices "Pacman4Console.info")))
+
+(set #later "")
+(set @default-dest #dest)
+(complete 100)
+(if @pretend
+    (message (cat "Pretend: nothing was copied or changed. Pacman For Console would have gone in " #dest "."))
+    (message (cat "Pacman For Console 1.2-gfos1 is installed in " #dest "."
+                  "\n\nTo start it, open the Pacman4Console drawer and double-click the Pacman icon."
+                  (if (= #kept "") "" (cat "\n\nLeft as they were: " #kept "."))
+                  (if (= #later "") "" (cat "\n\nStill to add to the drawer: " #later ". Run Install-Pacman4Console again to fetch or copy it.")))))
+(exit (quiet))

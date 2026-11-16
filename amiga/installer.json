@@ -1,0 +1,14 @@
+{
+  "name": "Pacman For Console",
+  "version": "1.2-gfos1",
+  "drawer": "Pacman4Console",
+  "program": "Pacman",
+  "cpu": "68040",
+  "fpu": false,
+  "space": 250000,
+  "modules": [],
+  "parent": "Work:Games",
+  "badge": "icons/art/pacman.png",
+  "keep": ["Levels"],
+  "script": "Install-Pacman4Console"
+}
