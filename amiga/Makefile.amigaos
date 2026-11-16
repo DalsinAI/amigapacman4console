@@ -1,0 +1,74 @@
+# Pacman For Console for GFOS (AmigaOS 3.2 with GFOpenUp), 68040/68060:
+# Pacman and its level editor in their own 40 x 32 console window, in
+# colour, built soft float (the stove's fpuauto uses the FPU when the Amiga
+# has one). No SDL, no ACGame, no GFOpenGPU.
+#
+#   make -f amiga/Makefile.amigaos -j4 UP=/path/to/pacman4console [STOVE=...]
+#
+# UP is upstream at the commit package/pacman4console.lock names, with
+# amiga/patches applied (package/build-amiga.sh does both). STOVE is a
+# GFOpenAmigaGCC 16.2.0-open6 stove (prefix/ has the compiler and the NDK).
+# Both programs draw through amiga/curses.c (the part of ncurses they use,
+# sent to the console as ANSI with the eight pens for colour: the layer of
+# DalsinAI/amiga2048, here with a 32-line screen, which the game needs);
+# amiga/console_amiga.c opens the window and reads the keys (amiga/keys.c:
+# the cursor keys as KEY_*).
+#
+# Output: build/amigaos/Pacman4Console/ (the drawer: Pacman, PacmanEdit,
+# Levels/, ReadMe, the licence, GlowIcons), build/amigaos/Pacman4Console.info
+# and Install-Pacman4Console beside them.
+
+UP      ?= ../pacman4console
+STOVE   ?= $(HOME)/AmiCradle/stoves/os32-gcc16-open6
+PREFIX  ?= $(STOVE)/prefix
+CC      = $(PREFIX)/bin/m68k-amigaos-gcc
+CPU     ?= -m68040 -msoft-float
+# -fno-tree-loop-distribute-patterns: GCC 16's loop miscompile.
+OPT     ?= -Os -fomit-frame-pointer -fno-tree-loop-distribute-patterns
+
+UPFLAGS = -noixemul $(OPT) $(CPU) -std=gnu11 -D__amigaos__ -w \
+          -Werror=implicit-function-declaration -Iamiga/include -Iamiga -I$(UP)
+# the game wants 32 lines (CheckScreenSize): the window is 40 x 32
+MYFLAGS = -noixemul $(OPT) $(CPU) -std=gnu99 -Wall -Iamiga/include -Iamiga \
+          -DACURSES_LINES=32 -DACURSES_COLS=40 -DAMIGA_GAME_TITLE='"Pacman For Console"'
+LDFLAGS = -noixemul $(CPU)
+
+BUILD   = build/amigaos
+OBJ     = $(BUILD)/obj
+OUT     = $(BUILD)/Pacman4Console
+
+PORT    = curses keys console_amiga
+PORTOBJ = $(PORT:%=$(OBJ)/port/%.o)
+
+all: $(OUT)/Pacman $(OUT)/PacmanEdit package
+
+$(OBJ)/up/%.o: $(UP)/%.c $(UP)/pacman.h $(wildcard amiga/include/*.h)
+	@mkdir -p $(dir $@)
+	$(CC) $(UPFLAGS) -c -o $@ $<
+
+$(OBJ)/port/%.o: amiga/%.c $(wildcard amiga/*.h amiga/include/*.h)
+	@mkdir -p $(dir $@)
+	$(CC) $(MYFLAGS) -c -o $@ $<
+
+$(OUT)/Pacman: $(OBJ)/up/pacman.o $(PORTOBJ)
+	@mkdir -p $(OUT)
+	$(CC) $(LDFLAGS) -o $@ $^
+
+$(OUT)/PacmanEdit: $(OBJ)/up/pacmanedit.o $(PORTOBJ)
+	@mkdir -p $(OUT)
+	$(CC) $(LDFLAGS) -o $@ $^
+
+package: $(OUT)/Pacman $(OUT)/PacmanEdit AMIGA_PORT.md
+	mkdir -p $(OUT)/Levels
+	cp $(UP)/Levels/*.dat $(UP)/Levels/README $(OUT)/Levels/
+	cp AMIGA_PORT.md $(OUT)/ReadMe
+	cp $(UP)/COPYING $(OUT)/COPYING.txt
+	cp amiga/icons/Pacman.info amiga/icons/ReadMe.info $(OUT)/
+	cp amiga/icons/ReadMe.info $(OUT)/COPYING.txt.info
+	cp amiga/icons/Pacman4Console-drawer.info $(BUILD)/Pacman4Console.info
+	cp amiga/Install-Pacman4Console amiga/Install-Pacman4Console.info $(BUILD)/
+
+clean:
+	rm -rf $(BUILD)
+
+.PHONY: all package clean
