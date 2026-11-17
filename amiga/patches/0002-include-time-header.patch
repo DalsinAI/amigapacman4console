@@ -1,0 +1,11 @@
+--- a/pacman.c
++++ b/pacman.c
+@@ -10,6 +10,7 @@
+ #include <stdio.h>
+ #include <curses.h>
+ #include <string.h>
+ #include <stdlib.h>
++#include <time.h>
+ #ifndef __amigaos__
+ #include <sys/timeb.h>
+ #endif
